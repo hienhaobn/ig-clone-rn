@@ -1,11 +1,21 @@
 import React from "react";
 import { View, Image, StyleSheet, TouchableOpacity, Text } from "react-native";
 import { Feather, AntDesign } from "@expo/vector-icons";
+import { getAuth, signOut } from "firebase/auth";
 
+const auth = getAuth();
+
+const handleSignout = () => {
+  try {
+    signOut(auth);
+  } catch (error) {
+    console.log(error);
+  }
+}
 const Header = ({ navigation }) => {
   return (
     <View style={styles.container}>
-      <TouchableOpacity>
+      <TouchableOpacity onPress={handleSignout}>
         <Image
           style={styles.logo}
           source={require("../../assets/header-logo.png")}

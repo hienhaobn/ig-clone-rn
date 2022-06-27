@@ -8,39 +8,64 @@ import {
   Alert,
 } from "react-native";
 import React, { useState } from "react";
+import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
+import app from "../../config/firebase";
+
+import {
+  getFirestore,
+  collection,
+  addDoc,
+} from "firebase/firestore/lite";
 
 import { Formik } from "formik";
 import * as Yup from "yup";
 import Validator from "email-validator";
 
-import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
-
 const auth = getAuth();
+const db = getFirestore(app);
 
-const LoginFrom = ({ navigation }) => {
-  const LoginFromSchema = Yup.object().shape({
+const SignupForm = ({ navigation }) => {
+  const SignupFormSchema = Yup.object().shape({
     email: Yup.string().email().required("An email is required"),
+    username: Yup.string().required().min(2, "A username is required"),
     password: Yup.string()
       .required()
       .min(6, "Your password has to have at least 8 characters"),
   });
 
-  const onLogin = async ({ email, password }) => {
+  const getRandomProfilePicture = async () => {
+    const response = await fetch("https://randomuser.me/api");
+    const data = await response.json();
+    return data.results[0].picture.large;
+  };
+
+  const onSignup = async (email, password, username) => {
     try {
-      await signInWithEmailAndPassword(auth ,email, password);
+      const authUser = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+      const usersCol = collection(db, "users");
+      addDoc(usersCol, {
+        owner_id: authUser.user.uid,
+        username,
+        email: authUser.user.email,
+        profile_picture: await getRandomProfilePicture(),
+      });
     } catch (error) {
-      Alert.alert(error.message);
+      Alert.alert("My Lord...", error.message);
     }
   };
 
   return (
     <View style={styles.wrapper}>
       <Formik
-        initialValues={{ email: "", password: "" }}
+        initialValues={{ email: "", username: "", password: "" }}
         onSubmit={(values) => {
-          onLogin(values);
+          onSignup(values.email, values.password, values.username);
         }}
-        validationSchema={LoginFromSchema}
+        validationSchema={SignupFormSchema}
         validateOnMount={true}
       >
         {({ handleChange, handleBlur, handleSubmit, values, isValid }) => (
@@ -57,7 +82,7 @@ const LoginFrom = ({ navigation }) => {
               ]}
             >
               <TextInput
-                placeholder="Phone nunber, username or email"
+                placeholder="Email"
                 placeholderTextColor="#444"
                 autoCapitalize="none"
                 keyboardType="email-address"
@@ -66,6 +91,28 @@ const LoginFrom = ({ navigation }) => {
                 onChangeText={handleChange("email")}
                 onBlur={handleBlur("email")}
                 value={values.email}
+              />
+            </View>
+
+            <View
+              style={[
+                styles.inputField,
+                {
+                  borderColor:
+                    1 > values.username.length || values.username.length >= 2
+                      ? "#ccc"
+                      : "red",
+                },
+              ]}
+            >
+              <TextInput
+                placeholder="Username"
+                placeholderTextColor="#444"
+                autoCapitalize="none"
+                textContentType="username"
+                onChangeText={handleChange("username")}
+                onBlur={handleBlur("username")}
+                value={values.username}
               />
             </View>
 
@@ -93,7 +140,7 @@ const LoginFrom = ({ navigation }) => {
               />
             </View>
             <View style={{ alignItems: "flex-end", marginBottom: 30 }}>
-              <Text style={{ color: "#6BB0F5" }}>Forgot password?</Text>
+              {/* <Text style={{ color: "#6BB0F5" }}>Forgot password?</Text> */}
             </View>
             <Pressable
               titleSize={20}
@@ -101,13 +148,13 @@ const LoginFrom = ({ navigation }) => {
               onPress={handleSubmit}
               disabled={!isValid}
             >
-              <Text style={styles.buttonText}>Log In</Text>
+              <Text style={styles.buttonText}>Sign up</Text>
             </Pressable>
 
             <View style={styles.sigupContainer}>
-              <Text>Don't have an account? </Text>
-              <TouchableOpacity onPress={() => navigation.push("SignupScreen")}>
-                <Text style={{ color: "#6BB0F5" }}>Sign Up</Text>
+              <Text>Already have an account? </Text>
+              <TouchableOpacity onPress={() => navigation.goBack()}>
+                <Text style={{ color: "#6BB0F5" }}>Log In</Text>
               </TouchableOpacity>
             </View>
           </>
@@ -152,4 +199,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default LoginFrom;
+export default SignupForm;
